@@ -4,8 +4,39 @@ node.js socket serverside toy project with noonnoo
 </br>
 
 # Node.js Socket.IO
-</br>
 출처 : https://socket.io/docs
+</br>
+
+## Index
+### [Socket.IO가 뭔가요?](#Socket.IO가-뭔가요?)
+- [Installation](#Installation)
+- [Initialization](#Initialization)
+  - [Standalone](#Standalone)
+  - [기존 HTTP 서버에 붙여서 초기화](#기존-HTTP-서버에-붙여서-초기화)
+  - [Express에 초기화](#Express에-초기화)
+- [Options](#Options)
+  - [Low-level engine options](#Low-level-engine-options)
+
+### [The Server instance](#The-Server-instance)
+- [Server#engine](#Server#engine)
+- [Utility methods](#Utility-methods)
+  - [socketsJoin](#socketsJoin)
+  - [socketsLeave](#socketsLeave)
+  - [disconnectSockets](#disconnectSockets)
+  - [fetchSockets](#fetchSockets)
+  - [serverSideEmit](#serverSideEmit)
+- [Events](#Events)
+
+### [Server API](#Server-API)
+- [new Server(httpsServer[, options])](#new-Server(httpsServer[,-options]))
+- [new Server(port[, options])](#new-Server(port[,-options]))
+- [new Server(options)](#new-Server(options))
+  - [server.sockets](#server.sockets)
+  - [server.serveClient([value])](#server.serveClient([value]))
+  - [server.path([value])](#server.path([value]))
+---
+
+
 
 ## Socket.IO가 뭔가요?
 `Socket.IO`는 **실시간**, **양방향**, 브라우저와 서버 간에 **이벤트 기반** 커뮤니케이션을 가능하게 해주는 라이브러리에요.
@@ -350,10 +381,12 @@ io.of('/admin').in('room1').socketsJoin('room2');
 
 // 하나의 소켓 아이디로도 할 수 있어요
 io.in(theSocketId).socketsJoin('room1');
+```
 </br>
 
 #### `socketsLeave`
 이 메소드는 소켓 인스턴스들이 특정 room에서 나오게 합니다.
+
 ```javascript
 // 모든 소켓 인스턴스들이 room1에서 나오게 해요
 io.socketsLeave('room1');
@@ -484,3 +517,362 @@ io.on('connection', (socket) => {
 });
 ```
 
+## Server API
+`require('socket.io')`로 이용됩니다.
+
+### new Server(httpsServer[, options])
+- `httpServer` (*http.Server*) 연결할 서버
+- `options` (*Object*)
+
+`new` 선언으로도 할 수 있고
+```javascript
+const { Server } = require('socket.io');
+const io = new Server();
+```
+
+선언없이 할 수도 있어요
+```javascript
+const io = require('socket.io')();
+```
+
+이용가능한 [옵션](#Options)은 참고하세요!
+
+### new Server(port[, options])
+- `port` (*숫자*) : 연결할(listen) 포트의 번호 (새로운 `http.Server`가 만들어져요)
+- `options` (*Object*)
+
+이용가능한 [옵션](#Options)은 참고하세요!
+```javascript
+const io = require('socket.io')(3000, {
+  path: '/test',
+  serveClient: false,
+  // 아래는 engine.IO 옵션들
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  cookie: false
+});
+```
+
+### new Server(options)
+- `options` (Object)
+
+이용가능한 [옵션](#Options)은 참고하세요!
+
+```javascript
+const io = require('socket.io')({
+  path: '/test',
+  serveClient: false,
+});
+```
+
+그리고 아래처럼 하거나
+```javascript
+const server = require('http').createServer();
+
+io.attach(server, {
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  cookie: false
+});
+
+server.listen(3000);
+```
+
+아래처럼 할 수 있어요
+```javascript
+io.attach(3000, {
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  cookie: false
+});
+```
+
+#### server.sockets
+- (*네임스페이스*)
+
+기본 네임스페이스 별칭은 `/` 입니다.
+```javascript
+io.sockets.emit('hi', 'everyone');
+```
+
+아래도 동일하게 작동하는 코드에요
+```javascript
+io.of('/').emit('hi', 'everyone');
+```
+
+#### server.serveClient([value])
+- `value` (*Boolean*)
+- **Returns** `Server | Boolean`
+
+만약 `value`가 `true`면 연결된 서버는 클라이언트 파일들을 보내줍니다. (연결된 서버는 `Serve#attach`를 보세요.) 이 메소드는 `attach`메소드가 불리고 난 후에는 효력이 없습니다. 만약 아무 인수도 받지 못하면 이 메소드는 현재 값을 반환합니다.
+```javascript
+// 서버와 `serveClient` 옵션을 보내요
+const io = require('socket.io')(http, {
+  serveClient: false
+});
+
+// 또는 서버를 보내지 않고 메소드를 부를 수 있어요
+const io = require('socket.io')();
+io.serveClient(false);
+io.attach(http);
+```
+
+#### server.path([value])
+- `value` (*Boolean*)
+- **Returns** `Server | Boolean`
+
+`engine.io` 아래 있는 경로`값`을 설정하고 정적 파일들이 보내집니다. 기본값은 `/socket.io` 입니다. 만약 아무 인수도 받지 못하면 현재 값을 반환합니다.
+
+```javascript
+const io = require('socket.io')();
+io.path('/myownpath');
+
+// 클라이언트에서는
+const socket = io({
+  path: 'myownpath'
+});
+```
+
+#### server.adapter([value])
+- `value` (*Adapter*)
+- **Returns** `Server | Adapter`
+
+어댑터 `값`을 설정합니다. 기본값은 메모리 기반인 socket.io를 전달해주는 `어댑터`의 인스턴스입니다. [socket.io-adapter](https://github.com/socketio/socket.io-adapter)를 참고하세요. 만약 아무 인수도 받지 못하면 이 메소드는 현재값을 반환합니다.
+
+```javascript
+const io = require('socket.io')(3000);
+const redis = require('socket.io-redis');
+io.adapter(redis({
+  host: 'localhost',
+  port: 6379
+}));
+```
+
+#### server.attach(httpServer[, options])
+- `httpServer` (*httpServer*) 연결되는 서버
+- `options` (*Object*)
+
+`httpServer`의 engine.io 인스턴스에 `서버`를 연결합니다. `옵션`이 제공되기도 해요.
+
+#### server.attach(port[, options])
+- `port` (*Number*) 연결할 수 있도록 열어 둔 포트 번호
+- `options` (*Object*)
+
+새로운 http.Server의 engine.io 인스턴스에 `서버`를 연결합니다. `옵션`이 제공되기도 해요.
+
+#### server.listen(httpServer[, options])
+[server.attach(httpServer[, options])](#server.attach(httpServer[,-options])) 와 동일해요
+
+#### server.listen(port[, options])
+[server.attach(port[, options])](#server.attach(port[,-options])) 와 동일해요
+
+#### server.bind(engine)
+- `engine` (*engine.Server*)
+- **Returns** `Server`
+
+#### server.onconnection(socket)
+- `socket` (*engine.Socket*)
+- **Returns** `Server`
+
+#### server.of(nsp)
+- `nsp` (*String|RegExp|Function*)
+- **Returns** `Namespace`
+
+경로 이름 식별자인 `nsp`를 기준으로 지정된 네임스페이스를 초기화하고 검색합니다. 만약 네임스페이스가 이미 초기화되어 있으면 즉시 그 네임스페이스를 반환합니다.
+
+```javascript
+const adminNamespace = io.of('/admin');
+```
+
+다이나믹한 방법으로 네임스페이스를 만들기 위해 정규식이나 함수가 주어질 수 있습니다.
+정규식이 주어지는 방법은:
+```javascript
+const dynamicNsp = io.of(/^\/dynamic-\d+$/).on('connection', (socket) => {
+  const newNamespace = socket.nsp; // newNamespace.name === "/dynamic-101"
+
+  // 하위 네임스페이스에 있는 모든 클라이언트에게 브로드캐스트
+  newNamespcae.emit('hello');
+});
+
+// client-side
+const socket = io('/dynamic-101');
+
+// 각각의 하위 네임스페이스에 있는 모든 클라이언트에게 브로드캐스트
+dynamicNsp.emit('hello');
+
+// 각각의 하위 네임스페이스에 미들웨어 추가
+dynamicNsp.use((socket, next) => {
+  /* ... */
+});
+```
+
+함수가 주어지는 방법은:
+```javascript
+io.of((name, query, next) => {
+  // checkToken 메소드는 반드시 Boolean으로 반환되고, 클라이언트가 연결될 수 있는지를 알려줘요
+  next(null, checkToken(query.token));
+}).on('connection', (socket) => {
+  /* ... */
+});
+```
+
+#### server.close([callback])
+- `callback` (*Function*)
+Socket.IO 서버를 닫습니다. `callback` 인수는 선택적이며 연결이 닫히면 불려집니다.
+기억하세요 : 이 메소드는 HTTP 서버도 닫습니다.
+
+```javascript
+const Server = require('socket.io');
+const PORT = 3030;
+const server = require('http').Server();
+
+const io = Server(PORT);
+io.close(); // 현재 서버를 닫습니다
+
+server.listen(PORT);
+io = Server(server);
+```
+
+#### server.engine
+[Engine.IO 서버](#https://socket.io/docs/v4/server-api/#engine)를 참조하세요.
+
+#### server.socketsJoin(rooms)
+v4.0.0에 추가된 메소드입니다.
+`io.of('/').socketsJoin(rooms)`의 별칭입니다.
+[여기](#socketsJoin)를 참고하세요.
+
+#### server.disconnectSockets([close])
+v4.0.0에 추가된 메소드입니다.
+`io.of('/').disconnectSockets(rooms)`의 별칭입니다.
+[여기](#disconnectSockets)를 참고하세요.
+
+#### server.fetchSockets()
+v4.0.0에 추가된 메소드입니다.
+[여기](#fetchSockets)를 참고하세요
+
+#### server.serverSideEmit(eventName[, ...args][, ack])
+v4.0.0에 추가된 메소드입니다.
+`io.of("/").serverSideEmit(/* ... */);`와 같습니다.
+[여기](#serverSideEmit)를 참고하세요.
+
+#### Event
+
+- `connection` : 클라이언트와의 연결에 따라 발생합니다.
+  - `socket` (*Socket*) : 클라이언트와의 소켓 연결
+  ```javascript
+  io.on('connection', (socket) => {
+    // ...
+  });
+  ```
+- `connect` : `connection`과 동의이 (synonym)
+- `new_namespace` : 새로운 네임스페이스가 만들어지면 발생합니다.
+  - `namespace` (*Namespace*) : 새로운 네임스페이스
+  
+  ```javascript
+  io.on('new_namespace', (namespace) => {
+    // ...
+  });
+  ```
+  
+  다음 예시들처럼 사용할 수 있습니다.
+  - 각각 네임스페이스에 미들웨어를 붙일 때 :
+  ```javascript
+  io.on('new_namespace', (namespace) => {
+    namespace.use(myMiddleware);
+  });
+  ```
+  
+  - 동적으로 생성된 네임스페이스를 추적할 때 :
+  ```javascript
+  io.of(/\/nsp-\w+/);
+
+  io.on('new_namespace', (namespace) => {
+    console.log(namespace.name);
+  })
+  ```
+
+### Namespace
+네임스페이스는 경로명으로 식별되는 주어진 영역(scope) 내에 연결된 소켓들의 풀을 나타냅니다.
+(eg: `/chat`)
+더 많은 정보는 [여기](#The-Server-instance)를 확인하세요
+
+#### namespace.name
+- (**String**)
+네임스페이스의 식별자 속성입니다.
+
+#### namespace.sockets
+- (*Map<SocketId, Socket>*)
+
+이 네임스페이스에 연결되는 소켓 인스턴스들의 맵입니다.
+
+```javascript
+// (이 노드에 있는) 이 네임스페이스의 소켓 개수
+const socketCount = io.of('/admin').sockets.size;
+```
+
+#### namespace.adapter
+- (*Adapter*)
+어댑터는 네임스페이스에 쓰입니다. Redis에 기반한 어댑터를 쓸 때 유용하며, 클러스터들을 아울러 소켓과 room을 관리하는 메소드가 발생됩니다.
+
+기억해두세요: 메인 네임스페이스의 어댑터는 `io.of('/').adapter`에 액세스할 수 있습니다.
+자세한 설명은 [여기](#https://socket.io/docs/v4/rooms/#Implementation-details)를 참고하세요.
+
+#### namespace.to(room)
+- `room` (*string*) | (*string[]*)
+- **Returns** `BroadcastOperator` for chaning
+
+이 메소드는 해당 `room`에 들어와있는 클라이언트에게만 *브로드캐스팅*되는 후속으로 발생되는 이벤트의 수식어(modifier)를 설정합니다. 
+
+여러 room에 보내고 싶으면, `to`를 여러 번 호출할 수 있습니다.
+```javascript
+const io = require('socket.io')();
+const adminNamespace = io.of('/admin');
+
+adminNamespace.to('level1').emit('an event', {
+  some: 'data'
+});
+
+// 여러 room
+io.to('room1').to('room2').emit(...);
+// 또는 하나의 배열로도 가능해요
+io.to(['room1', 'room2']).emit(...);
+```
+
+#### namespace.in(room)
+v1.0.0에 추가된 메소드입니다.
+[namespace.to(room)](#namespace.to(room))와 동일해요.
+
+#### namespace.except(rooms)
+v4.0.0에 추가된 메소드입니다.
+- `rooms` (*string*) | (*string[]*)
+- **Returns** `BroadcastOperator`
+이 메소드는 해당 `room`에 있지 **않는** 클라이언트에게만 *브로드캐스팅*되는 후속으로 발생되는 이벤트의 수식어(modifier)를 설정합니다. 
+
+```javascript
+// 'room1'에 있는 클라이언트를 제외하고 보내요
+io.except('room1').emit(...);
+
+// room2에 있고 room3에 있지 않은 모든 클라이언트에게 보내요
+io.to('room2').except('room3').emit(...);
+```
+
+#### namespace.emit(eventName[,...args])
+- `eventName` (*String*)
+- `args`
+- **Returns** `true`
+
+연결된 모든 클라이언트에게 발송합니다. 아래 두 코드는 동일하게 작동해요.
+```javascript
+const io = require('socket.io')();
+io.emit('an event sent to all connected clients'); // 메인 네임스페이스
+
+const chat = io.of('/chat');
+chat.emit('an event sent to all connected clients in chat namespace');
+```
+
+**기억해두세요**: 네임스페이스에서 발송할 때는 확인(acknowledgements)이 지원되지 않아요.
+
+#### namespace.allSockets()
+- **Returns** `Promise<Set<SocketId>>`
+
+이 네임스페이스에 연결된 소켓들의 아이디 리스트를 알 수 있습니다. (적용가능한 모든 )
