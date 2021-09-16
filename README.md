@@ -334,5 +334,153 @@ io.of('/admin').in('room1').except('room2').local.disconnectionSockets();
 인스턴스들의 연결을 끊어줍니다.
 
 `socket.io-redis@6.1.0`부터 Redis 어댑터와 호환됩니다. 어댑터는 Socket.IO 서버들을 아울러서 적용돼요.
+</br>
 
-### `socketsJoin`
+#### `socketsJoin`
+이 메소드는 소켓 인스턴스들이 특정 room에 들어갈 수 있도록 해줍니다.
+```javascript
+// 모든 소켓 인스턴스들이 "room1"에 들어가게 해요
+io.socketsJoin('room1');
+
+// room1에 있는 모든 소켓 인스턴스들이 room2와 room3에 들어가게 해요
+io.in('room1').socketsJoin(['room2', 'room3']);
+
+// 'admin' 네임스페이스의 room1에 있는 모든 소켓 인스턴스들이 room2에 들어가게 해요
+io.of('/admin').in('room1').socketsJoin('room2');
+
+// 하나의 소켓 아이디로도 할 수 있어요
+io.in(theSocketId).socketsJoin('room1');
+</br>
+
+#### `socketsLeave`
+이 메소드는 소켓 인스턴스들이 특정 room에서 나오게 합니다.
+```javascript
+// 모든 소켓 인스턴스들이 room1에서 나오게 해요
+io.socketsLeave('room1');
+
+// room1에 있는 모든 소켓 인스턴스들이 room2와 room3에서 나오게 해요
+io.in('room1').socketsLeave(['room2', 'room3']);
+
+// admin 네임스페이스의 room1에 있는 모든 소켓 인스턴스들이 room2에서 나오게 해요
+io.of('/admin').in('room1').socketsLeave('room2');
+
+// 하나의 소켓 아이디로도 할 수 있어요
+io.in(theSocketId).socketsLeave('room1');
+```
+</br>
+
+#### `disconnectSockets`
+이 메소드는 소켓 인스턴스들의 연결을 끊어줍니다.
+```javascript
+// 모든 소켓 인스턴스들의 연결을 끊어요
+io.disconnectSockets();
+
+// room1에 있는 모든 소켓 인스턴스들의 연결을 끊어요 (그리고 저수준 연결을 버려줘요)
+io.in('room1').disconnectSockets(true);
+
+// admin 네임스페이스의 room1에 있는 모든 소켓 인스턴스들의 연결을 끊어요
+io.of('/admin').in('room1').disconnectSockets();
+
+// 하나의 소켓 아이디로도 할 수 있어요
+io.of('/admin').in(theSocketId).disconnectSockets();
+```
+</br>
+
+#### `fetchSockets`
+이 메소드는 소켓 인스턴스들을 반환해줍니다.
+```javascript
+// 모든 소켓 인스턴스들을 반환해요.
+const sockets = await io.fetchSockets();
+
+// 메인 네임스페이스의 room1의 모든 소켓 인스턴스들을 반환해요
+const sockets = await io.in('room1').fetchSockets();
+
+// admin 네임스페이스의 room1의 모든 소켓 인스턴스들을 반환해요
+const sockets = await io.of('/admin').in('room1').fetchSockets();
+
+// 하나의 소켓 아이디로도 할 수 있어요
+const sockets = await io.in(theSocketId).fetchSockets();
+```
+위 코드의 `소켓` 변수들은 일반적인 소켓 클래스의 하위 집합을 갖는 객체들의 리스트입니다.
+```javascript
+for (const socket of sockets) {
+    console.log(socket.id);
+    console.log(socket.handshake);
+    console.log(socket.rooms);
+    console.log(socket.data);
+    socket.emit(/* ... */);
+    socket.join(/* ... */);
+    socket.leave(/* ... */);
+    socket.disconnect(/* ... */);
+}
+```
+이 `데이터` 속성은 Socket.IO 서버들간에 정보를 공유하는데 쓸 수 있는 임의의 객체입니다.
+```javascript
+// 서버 A
+io.on('connection', (socket) => {
+    socket.data.username = 'alice';
+});
+
+// 서버 B
+const sockets = await io.fetchSockets();
+console.log(sockets[0].data.username); // 'alice'
+```
+</br>
+
+#### `serverSideEmit`
+이 메소드는 멀티-서버-환경(=여러개의 노드들을 사용하는 경우) Socket.IO 서버 클러스터의 다른 서버에 이벤트를 보냅니다(emit). 
+</br>
+
+문법:
+```javascript
+io.serverSideEmit('hello', 'world');
+```
+받는(receive) 쪽에서의 문법은:
+```javascript
+io.on('hello', (arg1) => {
+    console.log(arg1); // prints 'world'
+});
+```
+핑퐁 확인(Acknowledgements)도 가능합니다:
+```javascript
+// 서버 A
+io.serverSideEmit('ping', (err, responses) => {
+    console.log(responses[0]); // prints 'pong'
+});
+
+// 서버 B
+io.on('ping', (cb) => {
+    cb('pong');
+});
+```
+알아두세요:
+- `connection`, `connect`, `new_namespace`는 예약어라서 사용 불가능합니다
+- 속성(argument)의 개수는 몇 개여도 상관없어요. 하지만 바이너리 구조는 현재 지원되지 않습니다. (속성의 배열은 `JSON.stringify` 형태입니다)
+예:
+```javascript
+io.serverSideEmit('hello', 'world', 1, '2', {3: '4'});
+```
+- 확인 콜백은 다른 Socket.IO 서버들이 지연 시간 내에도 반응하지 않으면 에러가 불려집니다.
+```javascript
+io.serverSideEmit('ping', (err, responses) => {
+    if (err) {
+        // Socket.IO 서버 중 하나라도 응답하지 않아도
+        // 'response' 배열은 이미 수신된 모든 응답을 포함합니다.
+    } else {
+        // 성공! 'responses' 배열은 Socket.IO 클러스터의 각각의 서버들의 객체를 하나씩 포함합니다.
+    }
+})
+```
+</br>
+
+### Events
+
+서버 인스턴스는 하나의 이벤트를 보냅니다(emit). (기술적으로는 두 개이지만 ^^ `connect`는 `connection`의 또 다른 이름이에요)
+- `connection`
+#### `connection`
+```javascript
+io.on('connection', (socket) => {
+    // ...
+});
+```
+
