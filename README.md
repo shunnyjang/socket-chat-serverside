@@ -42,7 +42,6 @@ io.on('connection', (socket) => {
 });
 io.listen(3000);
 ```
-</br>
 인자에 포트를 바로 넣어주고 싶다면
 
 ```javascript
@@ -53,12 +52,12 @@ io.on('connection', (socket) => {
     /* ... */
 });
 ```
-
+</br>
 
 ### 기존 HTTP 서버에 붙여서 초기화
 - **HTTP** 서버
 ```javascript
-const httpServer = require('http).createServer();
+const httpServer = require('http').createServer();
 const options = { /* ... */ };
 const io = require('socket.io')(httpServer, options);
 
@@ -72,7 +71,7 @@ httpServer.listen(3000);
 const fs = require('fs');
 const httpServer = require('https').createServer({
     key: fs.readFileSync('/tmp/key.pem'),
-    cert: fs.readFilesync('/tmp/cert.pem)
+    cert: fs.readFilesync('/tmp/cert.pem')
 });
 const options = { /* ... */ };
 const io = require('socket.io')(httpServer, options);
@@ -97,6 +96,7 @@ const io = require('socket.io')(httpServer, options);
 io.on('connection', socket => { /* ... */ });
 httpServer.listen(3000);
 ```
+</br>
 
 ### Express에 초기화
 ```javascript
@@ -111,11 +111,13 @@ io.on('connection', (socket) => {
 httpServer.listen(3000);
 // WARNING !!! app.listen(3000); will not work here, as it creates a new HTTP server
 ```
+</br>
+</br>
 
 ### Options
 ```javascript
 const options = {
-    path: "/test",
+    path: '/test',
     serveClient: false,
     // 아래는 engine.IO 옵션
     pingInterval: 10000,
@@ -124,9 +126,13 @@ const options = {
 };
 ```
 
-- `path`
+1. `path`
   - default value : `/socket.io/`
+</br>
+
 서버와 클라이언트가 반드시 같아야 합니다
+</br>
+
 **서버**
 ```javascript
 const httpServer = require('http').createServer();
@@ -142,14 +148,14 @@ const socket = io('https://example.com', {
 });
 ```
 
-- `serveClient`
+2. `serveClient`
   - default value : `true`
 클라이언트 파일을 보낼지에 대한 옵션입니다. `true`면 다음 위치에서 번들이 제공됩니다.
   - `<url>/socket.io/socket.io.js`
   - `<url>/socket.io/socket.io.min.js`
   - `<url>/socket.io/socket.io.msgpack.min.js`
 
-- `adapter`
+3. `adapter`
   - default value : `socket.io-adapter` (인메모리 어댑터입니다)
 Redis 어댑터를 쓴다면 예시는 아래와 같습니다 (`socket.io-redis` 패키지를 사용합니다)
 ```javascript
@@ -163,15 +169,15 @@ const io = require('socket.io')(httpServer, {
 });
 ```
 
-- `parser`
+4. `parser`
   - default value : `socket.io-parser`
 
-- `connectTimeout`
+5. `connectTimeout`
   - default value : `45000`
 namespace에 접속이 안되면 접속시도가 끊어지는 ms
 
 #### Low-level engine options
-- `pintTimeout`
+6. `pintTimeout`
   - default value : `20000`
 서버와 클라이언트의 연결이 죽지 않고 잘 살아있는지 간헐적으로 확인하는 `하트비트 매카니즘`에 이용됩니다. 
 </br>
@@ -196,15 +202,15 @@ const io = require('socket.io')(httpServer, {
 });
 ```
 
-- `pingInterval`
+7. `pingInterval`
   - default value : `25000`
 `pingTimeout`에서 클라이언트가 서버의 핑을 기다리는데 필요한 추가 시간
 
-- `upgradeTimeout`
+8. `upgradeTimeout`
   - default value : `10000`
 완료되지 않은 전송 업그레이드가 취소되기 전 지연시간 (ms)
 
-- `maxHttpBufferSize`
+9. `maxHttpBufferSize`
   - default value : `1e6` (1MB)
 소켓이 닫히기 전까지 한 메세지에 몇 바이트까지 가능한건지 정의합니다. 필요에 따라서 값을 조절하세요.
 ```javascript
@@ -213,7 +219,7 @@ const io = require('socket.io')(httpServer, {
 });
 ```
 
-- `allowRequest`
+10. `allowRequest`
   - `default` : -
 주어진 핸드셰이크 또는 업그레이드 요청을 첫 번째 매개 변수로 수신받고, 핸드셰이크를 계속할지 결정하는 함수
 ```javascript
@@ -225,15 +231,15 @@ const io = require('socket.io')(httpServer, {
 });
 ```
 
-- `transport`
+11. `transport`
   - default value : `['polling', 'websocket']`
 서버 사이드에서 허용되는 low-level 전송입니다.
 
-- `allowUpgrades`
+12. `allowUpgrades`
   - default value : `true`
 전송 업그레이드를 허용할지 옵션입니다.
 
-- `cookie`
+13. `cookie`
   - default value : `-`
 Socket.IO v3부터 쿠키는 기본으로 제공되지 않음
 ```javascript
@@ -246,12 +252,15 @@ const io = require('socket.io')(httpServer, {
     }
 });
 ```
+</br>
+</br>
 
-### The Server instance
+
+## The Server instance
 코드에서 주로 `io`로 선언되는 서버 인스턴스는 어플리케이션에서 사용되는 몇 개의 속성이 있습니다.
 서버 인스턴스는 메인 네임스페이스의 메소드를 상속합니다. (예 : `namespace.use()`, `namespace.allSockets()`)
 
-#### Server#engine
+### Server#engine
 기존 Engine.IO 서버를 참조합니다.
 현재 연결된 많은 개수의 클라이언트를 가지고 오는데 사용할 수 있습니다.
 ```javascript
@@ -259,8 +268,6 @@ const count = io.engine.clientCount;
 // count : 사용량에 따라 메인 네임스페이스의 소켓 인스턴스 수와 유사할 수도 있고 유사하지 않을 수도 있어요
 const count2 = io.of('/').sockets.size;
 ```
-</br>
-
 또는 커스텀한 세션 ID를 생성할 수 있습니다. (`sid` 쿼리 파라미터)
 ```javascript
 const uuid = require('uuid');
@@ -294,14 +301,15 @@ io.engine.generateId = (req) => {
     아래는 발생할 수 있는 에러 코드와 메세지에요
     |Code|Message|
     |----|-------|
-    |0|알 수 없는 전송("Transport unknown")|
-    |1|알 수 없는 세션 ID("Session ID unknown")|
-    |2|잘못된 핸드셰이크 메소드("Bad handshake method")|
-    |3|잘못된 요청("Bad request")|
-    |4|거절("Forbidden")|
-    |5|지원되지 않는 프로토콜 버전("Unsupported protocol version")|
+    |0|"Transport unknown"|
+    |1|"Session ID unknown"|
+    |2|"Bad handshake method"
+    |3|"Bad request"|
+    |4|"Forbidden"|
+    |5|"Unsupported protocol version"|
+</br>
 
-#### Utility methods
+### Utility methods
 소켓 인스턴스와 그 room들을 다룰 수 있는 유틸리티 메소드가 Socket.IO v4.0.0에 추가되었습니다.
 - `socketsJoin` : 일치하는 소켓 인스턴스가 특정 채팅방에 들어갈 수 있도록 해줘요
 - `socketsLeave` : 일치하는 소켓 인스턴스가 특정 채팅방에서 나오도록 해줘요
@@ -327,4 +335,4 @@ io.of('/admin').in('room1').except('room2').local.disconnectionSockets();
 
 `socket.io-redis@6.1.0`부터 Redis 어댑터와 호환됩니다. 어댑터는 Socket.IO 서버들을 아울러서 적용돼요.
 
-#### `socketsJoin`
+### `socketsJoin`
