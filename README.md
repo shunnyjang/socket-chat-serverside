@@ -4,7 +4,8 @@ node.js socket serverside toy project with noonnoo
 </br>
 
 # Node.js Socket.IO
-출처 : https://socket.io/docs
+https://socket.io/docs 번역입니다.
+수많은 오역과 의역 😉
 </br>
 
 ## Index
@@ -875,4 +876,472 @@ chat.emit('an event sent to all connected clients in chat namespace');
 #### namespace.allSockets()
 - **Returns** `Promise<Set<SocketId>>`
 
-이 네임스페이스에 연결된 소켓들의 아이디 리스트를 알 수 있습니다. (적용가능한 모든 )
+(적용가능한 모든 노드를 통틀어서) 이 네임스페이스에 연결된 소켓들의 아이디 리스트를 알 수 있습니다.
+```javascript
+// 메인 네임스페이스에 있는 모든 소켓들
+const ids = await io.allSockets();
+
+// 메인 네임스페이스 안 'user:1234' room에 있는 모든 소켓들
+const ids = await io.in('user1234').allSockets();
+
+// 'chat' 네임스페이스에 있는 모든 소켓들
+const ids = await io.of('/chat').allSockets();
+
+// 'chat' 네임스페이스에 있는 'general' room에 있는 모든 소켓들
+const ids = await io.of('/chat').in('general').allSockets();
+```
+
+#### namespace.use(fn)
+- `fn` (*Function*)
+
+들어오는 모든 `소켓`에 실행되는 함수인 미들웨어를 등록합니다. 그리고 다음으로 등록된 미들웨어에 대해 선택적으로 실행을 연기할 수 있는 소켓과 함수를 파라미터로 수신합니다.
+
+미들웨어 콜백으로 보내진 에러들은 클라이언트에게 특별한 `connect_error` 패킷으로 보내집니다.
+
+```javascript
+// server-side
+io.use((socekt, next) => {
+  const err = new Error('not authorized');
+  err.data = { content: "Please retry later" }; // 세부사항 추가
+  next(err);
+});
+
+// client-side
+socket.on('connect_error', (err) => {
+  console.log(err, instanceof Error); // true
+  console.log(err.message); // not authorized
+  console.log(err.data); // { content: "Please retry later" }
+});
+```
+
+자세한 내용은 [여기](https://socket.io/docs/v4/middlewares/)를 확인하세요
+
+#### namespace.socketsJoin(rooms)
+v4.0.0에 추가된 메소드입니다.
+- `rooms` (*String*) | (*String[]*)
+- **Returns** `void`
+
+이 메소드는 소켓 인스턴스들이 특정 room에 들어갈 수 있도록 해줍니다.
+```javascript
+// 모든 소켓 인스턴스들이 "room1"에 들어가게 해요
+io.socketsJoin('room1');
+
+// room1에 있는 모든 소켓 인스턴스들이 room2와 room3에 들어가게 해요
+io.in('room1').socketsJoin(['room2', 'room3']);
+
+// 'admin' 네임스페이스의 room1에 있는 모든 소켓 인스턴스들이 room2에 들어가게 해요
+io.of('/admin').in('room1').socketsJoin('room2');
+
+// 하나의 소켓 아이디로도 할 수 있어요
+io.in(theSocketId).socketsJoin('room1');
+```
+
+더 많은 정보는 [여기](#socketsJoin)를 확인하세요.
+
+#### namespace.socketsLeave(rooms)
+- `rooms`(*string*) | (*string[]*)
+- **Returns** `void`
+
+더 많은 정보는 [여기](#socketsLeave)를 확인하세요
+
+#### namespace.disconnectSockets([close])
+- `close` (*Boolean*) 연결을 닫을지 말지 여부
+- **Returns** `void`
+
+더 많은 정보는 [여기](#disconnectSockets)를 확인하세요.
+
+#### namespace.fetchSockets()
+- **Returns** `(Socket | RemoteSocket)[]`
+
+**꼭! 기억해두세요** : 이 메소드는 (그리고 `socketsJoin`, `socketsLeave`, `disconnectSockets`도) Redis 어댑터와 호환돼요. (`socket.io-redis@6.1.0`부터). 즉 이 메소드들은 Socket.IO 서버를 아울러서 모두 작동해요.
+
+더 많은 정보는 [여기](#fetchSockets)를 확인하세요
+
+#### namespace.serverSideEmit(eventName[,...args][,ack])
+- `eventName` (*String*)
+- `args`
+- `ack` (*Function*)
+- **Returns** `true`
+
+더 많은 정보는 [여기](#serverSideEmit)를 확인하세요
+
+### Socket
+
+`소켓`은 브라우저 클라이언트와 상호작용하기 위한 구조적인 클래스입니다. `소켓`은 특정 네임스페이스에 속하고 (네임스페이스 기본값은 `/`) `클라이언트`를 사용하여 통신합니다.
+
+`소켓`은 실제 TCP/IP `소켓`에 직접적으로 관련있지 않으며 그저 클래스의 이름입니다.
+
+각각의 `네임스페이스` 내에서, `room`이라고 부르는 임의적인 채널을 정의할 수 있고 `소켓은` 이 채널에 들어왔다 나갈 수 있습니다. 이 채널은 `소켓` 집단에 브로드캐스트를 쉽게 만듭니다. (아래 `Socket#to`를 참고하세요!)
+
+`소켓` 클래스는 EventEmitter를 상속합니다. `소켓` 클래스는 오직 `emit` 메소드를 오버라이딩하고 EventEmitter의 다른 메소드는 수정하지 않았습니다. 여기 적혀진 (`emit`을 제외한) 모든 메소드는 `EventEmitter`에 의해 구현됐고, `EventEmitter`의 설명이 같이 적용됩니다.
+
+더 많은 정보는 [여기](https://socket.io/docs/v4/server-socket-instance/)를 참고하세요.
+
+
+#### socket.id
+- (*String*)
+
+세션의 유니크한 식별자이며 클라이언트로부터 받습니다.
+
+#### socket.rooms
+- (*Set*)
+
+클라이언트가 있는 room을 식별하는 문자열의 집합입니다.
+
+```javascript
+io.on('connection', (socket) => {
+  console.log(socket.rooms); // Set { <socket.id> }
+  socket.join('room1');
+  console.log(socket.rooms); // Set { <socket.id>, 'room1' }
+});
+```
+
+#### socket.client
+- (*Client*)
+
+클라이언트 객체를 참고합니다.
+
+#### socket.conn
+- (*engine.Socket*)
+
+클라이언트 전송 연결을 참조합니다. (engine.io `소켓` 객체) 이 메소드는 여전히 대부분의 실제 TCP/IP 소켓을 추상화해주는 IO의 전송 레이어(transport layer)에 접근할 수 있도록 해줍니다.
+
+```javascript
+io.on('connection', (socket) => {
+  const transport = socket.conn.transport.name; // (예:) 'polling'
+  console.log('current transport', transport);
+
+  socket.conn.on('upgrade', () => {
+    const newTransport = socket.conn.transport.name; // (예:) 'websocket'
+    console.log('new transport', newTransport);
+  });
+});
+```
+
+#### socket.request
+- (*Request*)
+
+engine.io `클라이언트`를 만든 `요청`을 참조하는 프록시를 얻을 수 있습니다. `Cookie`나 `User-Agent`와 같은 요청 헤더에 접근하는데 유용합니다.
+
+```javascript
+const cookie = require('cookie');
+io.on('connection', (socket) => {
+  const cookies = cookie.parse(socket.request.headers.cokie || "");
+});
+```
+
+#### socket.handshake
+- (*Object*)
+
+핸드셰이크 구성사항:
+```javascript
+{
+  headers: /* 핸드셰이크 일부로 보내진 헤더 */,
+  time: /* 만들어진 일시 (문자열 형태) */,
+  address: /* 클라이언트 ip주소 */,
+  xdomain: /* 요청이 CORS인지 */,
+  secure: /* 요청이 보안이 되어있는지 */,
+  issued: /* 만들어진 일시 (유닉스 타임스탬프 형태) */,
+  url: /* 요청 URL 문자열 */,
+  query: /* 첫 번째 요청의 쿼리 파라미터 */,
+  auth: /* 인증 페이로드 */,
+}
+```
+
+사용하는법:
+```javascript
+io.use((socket, next) => {
+  let handshake = socket.handshake;
+  // ...
+});
+
+io.on('connection', (socket) => {
+  let handshake = socket.handshake;
+  // ...
+});
+```
+
+#### socket.use(fn)
+- `fn` (*Function*)
+
+들어오는 모든 `패킷`에서 실행되는 함수인 미들웨어를 등록하고 파라미터로서 받습니다. 그리고 다음으로 등록되는 미들웨어 실행을 선택적으로 연기하는 함수를 실행합니다.
+
+미들웨어 콜백으로 불려지는 에러들은 서버 측에서 `error` 이벤트로 발생됩니다.
+
+```javascript
+io.on('connection', (socket) => {
+  socket.use(([event, ...args], next) => {
+    if (isUnauthorized(event)) {
+      return next(new Error('unauthorized event'));
+    }
+    // next()를 부르는 걸 절대 잊지마세요!
+    next();
+  });
+
+  socket.on('error', (err) => {
+    if (err && err.message === 'unauthorized event') {
+      socket.disconnect();
+    }
+  });
+});
+```
+
+#### socket.send([...args][,ack])
+- `args`
+- `ack` (*Function*)
+- **Returns** `Socket`
+
+`message`이벤트를 전송합니다.
+
+#### socket.emit(eventName[,...args][,ack])
+*(`EventEmitter.emit`) 오버라이딩 메소드*
+- `eventName` (*String*)
+- `args`
+- `ack`
+- *Returns* `true`
+
+문자열로 식별된 소켓에 이벤트를 발송합니다. 다른 어떤 파라미터든 함께 포함될 수 있습니다. `버퍼`를 포함해서 모든 직렬화가능한 데이터 구조는 지원됩니다. 
+
+```javascript
+socket.emit('hello', 'world');
+socket.emit('with-binary', 1, '2', {3: '4', 5: Buffer.from([6])});
+```
+
+`ack` 인자는 선택사항이고 클라이언트의 응답에 불려집니다.
+```javascript
+io.on('connection', (sockt) => {
+  socket.emit('an event', {some: 'data'});
+  socket.emit('ferret', 'tobi', (data) => {
+    console.log(data); // 'woot'
+  });
+});
+
+// client-side
+client.on('ferret', (name, fn) => {
+  fn('woot');
+});
+```
+
+#### socket.on(eventName, callback)
+(*`EventEmitter`에서 상속되었음*)
+- `eventName` (*String*)
+- `callback` (*Function*)
+- **Returns** `Socket`
+
+주어진 이벤트의 새로운 핸들러를 등록합니다.
+```javascript
+socket.on('news', (data) => {
+  console.log(data);
+});
+// 여러 인자일 때
+socket.on('news', (arg1, arg2, arg3) => {
+  // ...
+});
+// 또는 승인(acknowledgement)을 보낼 때
+socket.on('news', (data, callback) => {
+  callback(0);
+});
+```
+
+#### socket.once(eventName, listener)
+
+#### socket.removeListener(eventName, listener)
+
+#### socket.removeAllListener([eventName])
+
+#### socket.eventNames()
+`EventEmitter`로 부터 상속받았습니다. Node.js의 [이벤트](https://nodejs.org/docs/latest/api/events.html) 모듈 문서를 참고하세요.
+
+#### socket.onAny(callback)
+- `callback` (*Function*)
+
+모든 것을 받는(catch-all) 리스너를 등록합니다.
+```javascript
+socket.onAny((event, ...args) => {
+  console.log(`got ${event}`);
+});
+```
+
+#### socket.prependAny(callback)
+- `callback` (*Function*)
+
+모든걸 듣는 리스너를 새로 등록합니다. 리스너는 리스너 배열의 가장 첫 번째에서 추가됩니다.
+```javascript
+socket.prependAny((event, ...args) => {
+  console.log(`got ${event}`);
+});
+```
+
+#### socket.offAny([listener])
+- `listener` (*Function*)
+
+전에 미리 등록되었던 리스너를 제거합니다. 만약 인자로 리스너가 없으면, 모든 리스너를 제거합니다.
+```javascript
+const myListener = () => { /* ... */ };
+socket.onAny(myListener);
+
+// 나중에
+socket.offAny(myListener);
+socket.offAny();
+```
+
+#### socket.listenersAny()
+- **Returns** `Function[]`
+
+등록된 모든 리스너의 리스트를 반환합니다.
+```javascript
+const listeners = socket.listenersAny();
+```
+
+#### socket.join(room)
+- `room` *(string) | (string[])*
+- **Returns** `void` | `Promise`
+
+주어진 `room`에 소켓이나 room의 리스트를 추가합니다.
+```javascript
+io.on('connection', (socket) => {
+  socket.join('room 237'); 
+  console.log(socket.rooms); // Set { <socket.id>, 'room 237'}
+  socket.join(['room 237', 'room 238']);
+  io.to('room 237').emit('a new user has joined the room');
+})
+```
+
+room에 들어가는 매카닉은 `어댑터`(`Server#adapter`)에 의해 처리됩니다. 기본은 `socket.io-adapter`입니다.
+
+편의를 위해서, 각각 소켓은 자동으로 id로 식별된 room에 들어가집니다. (`Socket#id`) 이는 다른 소켓들에 메세지를 브로드캐스팅하는데 쉬워집니다.
+```javascript
+io.on('connection', (socket) => {
+  socket.on('say to someone', (id, msg) => {
+    // id가 주어진 소켓에 프라이빗 메세지를 보냅니다.
+    socket.to(id).emit('my message', msg);
+  });
+});
+```
+
+#### socket.leave(room)
+- `room` *(String)*
+- **Returns** `void`|`Promise`
+
+주어진 room의 소켓을 삭제합니다.
+```javascript
+io.on('connection', (socket) => {
+  socket.leave('room 237');
+  io.to('room 237').emit(`user ${socket.id} has left the room`);
+});
+```
+
+남겨진 room은 자동으로 연결이 끊어져요
+
+#### socket.to(room)
+- `room` *(string) | (string[])*
+- **Returns** `Socket` for chainig
+
+후에 발생하는 이벤트 발생에 대해 수식어를 설정합니다. 이벤트는 클라이언트가 주어진 room에 들어왔을 때만 발생하고 *브로드캐스팅*됩니다. (이벤트를 발생시키는 소켓은 제외입니다.)
+
+여러 room에 보내기 위해서는, `to`를 여러 번 사용하세요
+```javascript
+io.on('connection', (socket) => {
+  // 하나의 room에
+  socket.to('others').emit('an event', { some: 'data' });
+
+  // 여러 room에
+  socket.to('room1').to('room2').emit('hello');
+
+  // 여러 room을 하나의 배열로
+  socket.ot(['room1', 'room2']).emit('hello');
+
+  // 다른 소켓에 프라이빗 메세지
+  socket.to(/* 다른 소켓 아이디 */).emit('hey');
+
+  // 경고!! `socket.to(socket.id).emti()`은 작동하지 않습니다. 같은 room에 다른 모든 사람에게 전송해요.
+  // 참고 : socket.id = 내 소켓 아이디
+  // 꼭 `socket.emit()`을 원래대로 쓰세요
+})
+```
+
+**기억하세요** : 확인(acknowledgement)은 브로드카스팅할 때 지원되지 않습니다.
+
+#### socket.in(room)
+[socket.to(room)](#socket.to(room))과 동일합니다.
+
+#### socket.except(rooms)
+- `rooms` *(string) | (string[])*
+- **Returns** `BroadcastOperator`
+
+후에 발생되는 이벤트에 대해 수식어를 설정합니다. 이벤트는 오직 주어진 room에 있지 **않은** 클라이언트에 대해서만 *브로드캐스팅*됩니다. (이벤트를 발생시키는 소켓은 제외입니다.)
+
+```javascript
+// 'room1'에 있지 않은 클라이언트와 전송하는 클라이언트를 제외하고 모든 클라이언트에게
+socket.broadcast.except('room1').emit(/* ... */);
+
+// 위랑 같은 코드
+socket.except('room1').emit(/* ... */);
+
+// room4에 있고 room5에 있지 않은 모든 클라이언트에게 (보내는 소켓 제외)
+socket.to('room4').except('room5').emit(/* ... */);
+```
+
+#### socket.compress(value)
+- `value` *(Boolean)* 따라오는 패킷 압축할지
+- **Returns** 연결되는 `Socket`
+
+후에 발생되는 이벤트에 대해 수식어를 설정합니다. 이벤트 데이터는 값이 true일 때만 압출될 수 있습니다. 메소드가 부르지 않으면 기본값은 `true`입니다.
+
+```javascript
+io.on('connection', (socket) => {
+  socket.compress(false).emit('uncompressed', 'that\'s rough');
+});
+```
+
+#### socket.disconnect(close)
+- `close` *(Boolean)* 연결을 닫을지 여부
+- **Returns** `Socket`
+
+이 소켓의 연결을 끊습니다. 만약 인자(close)의 값이 `true`이면, 연결을 끊습니다. 인자 값이 `false`이면 네임스페이스 연결을 끊습니다.
+
+```javascript
+io.on('connect', (socket) => {
+  setTimeout() => socket.disconnect((true), 5000);
+});
+```
+
+#### Flag: 'broadcast'
+
+후에 발생되는 이벤트에 대해 수식어를 설정합니다. 이벤트는 발신자 소켓을 제외한 모든 소켓에게 *브로드캐스팅*만을 합니다.
+```javascript
+io.on('connection', (socket) => {
+  socket.broadcast.emit('an event', { some: 'data' });
+});
+```
+
+#### Flag: 'volatile'
+
+후에 발생되는 이벤트에 대해 수식어를 설정합니다. 클라이언트가 메세지를 받을 준비가 되어있지 않으면 이벤트 데이터는 유실될 수 있습니다. (네트워크 지연 또는 다른 이슈 때문일 수도 있고, 연결되는데 긴 폴링 때문일 수도 있고, 요청-응답 사이클에 중간에 있어서 일 수도 있습니다.)
+```javascript
+io.on('connection', (socket) => {
+  socket.volatile.emit('an event', { some: 'data' });
+});
+```
+
+#### Event: 'disconnect'
+
+- `reason` *(String)* : 연결이 끊어진 이유 (클라이언트측일 수도 있고 서버측일수도 있음)
+
+```javascript
+io.on('connection', (socket) => {
+  socket.on('disconnect', (reason) => {
+    // ...
+  });
+});
+```
+
+가능한 이유들 목록 :
+|Reason|Description|
+|------|-----------|
+|`server namespace disconnect`| 소켓의 연결이 socket.disconnet()에 의해 강제로 끊어졌습니다.|
+|`client namespace disconnect`| 클라이언트가 socket.disconnect()를 이용해 수동으로 연결을 끊었습니다.|
+|`server shutting down`| 서버가 잘 닫혔습니다.|
+|`ping timeout`| 클라이언트가 `pingTimeout` 지연 시간 내에 PONG 패킷을 보내지 않았습니다.|
+|`transport close`| 연결이 닫혔습니다 (예: 유저가 연결을 잃음, 네트워크가 와이파이에서 4G로 변경됨)|
+|`transport error`| 연결에 오류가 발생했습니다.|
