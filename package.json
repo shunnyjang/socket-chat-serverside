@@ -4,7 +4,8 @@
   "description": "node.js socket serverside toy project with noonnoo",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server",
+    "dev": "nodemon server"
   },
   "repository": {
     "type": "git",
@@ -20,5 +21,8 @@
     "express": "^4.17.1",
     "moment": "^2.29.1",
     "socket.io": "^4.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
   }
 }
