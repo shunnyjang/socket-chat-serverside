@@ -4,7 +4,7 @@
   "description": "node.js socket serverside toy project with noonnoo",
   "main": "index.js",
   "scripts": {
-    "start": "node server",
+    "start": "nodemon server",
     "dev": "nodemon server"
   },
   "repository": {
