@@ -1,9 +1,13 @@
 const express = require('express');
 const app = express();
 
-// Setup CORS
-app.use(require('cors'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Setup CORS
+app.use(require('cors')());
+
+//Bring in the routes
 app.use("/user", require("./routes/user"));
 app.use("/chatroom", require("./routes/chatroom"));
 
