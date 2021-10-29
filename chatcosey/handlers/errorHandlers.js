@@ -7,8 +7,9 @@ exports.catchErrors = (fn) => {
         fn(req, res, next).catch((err) => {
             // Validation Errors
             if (typeof err === "string") {
+                console.log(err);
                 res.status(400).json({
-                    message: err
+                    message: "Error!"
                 });
             } else {
                 next(err);

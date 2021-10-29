@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const User = mongoose.model("User");
-const sha256 = require("js-sha256");
-const jwt = require("jwt-then");
+const jwt = require('../modules/jwt');
+
 
 const userController = {
     register: async (req, res) => {
@@ -11,10 +11,6 @@ const userController = {
             password
         } = req.body;
 
-        // const emailRegex = /@gmail.com|@naver.com|@test.com|@live.com/;
-        // if (!emailRegex.test(email)) throw "Email is not supported from your domain";
-        if (password.length < 6) throw "Password must be at least 6 characters long";
-
         const userExists = await User.findOne({
             email
         });
@@ -23,7 +19,7 @@ const userController = {
         const user = new User({
             name,
             email,
-            password: sha256(password + process.env.SALT)
+            password
         });
         await user.save();
 
@@ -39,16 +35,21 @@ const userController = {
 
         const user = await User.findOne({
             email,
-            password: sha256(password + process.env.SALT)
+            password
         });
         if (!user) throw "Email and Password did not match";
 
-        const token = await jwt.sign({ id: user.id }, process.env.SECRET);
+        const token = await jwt.sign(user);
+
         
         return res.json({
             message: "User logged in successfully!",
-            token
+            token: token
         });
+    },
+    getAllUsers: async (req, res) => {
+        const users = await User.find({ _id: { $ne: req.user.id }});
+        return res.status(200).json(users);
     }
 }
 

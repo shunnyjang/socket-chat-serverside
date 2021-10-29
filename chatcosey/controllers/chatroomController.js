@@ -3,16 +3,15 @@ const Chatroom = mongoose.model("Chatroom");
 
 const chatroomController = {
     createChatroom: async (req, res) => {
-        const { name } = req.body;
-
-        // const nameRegex = /^[A-Za-z\s]+$/;
-        // if (!nameRegex.test(name)) throw "Chatroom name can contain only alphabets.";
+        const user = req.user.id;
+        const { name, recipient } = req.body;
 
         const chatroomExists = await Chatroom.findOne({ name });
         if (chatroomExists) throw "Chatroom with that name already exists!";
 
         const chatroom = new Chatroom({
-            name
+            name,
+            participant: [{ user: user }, { user: recipient }]
         });
 
         await chatroom.save();
@@ -20,9 +19,16 @@ const chatroomController = {
             message: "Chatroom created"
         });
     },
-    getAllChatrooms: async (req, res) => {
-        const chatrooms = await Chatroom.find({});
-        return res.json(chatrooms);
+    getAllMyChatrooms: async (req, res) => {
+        try {
+            const chatrooms = await Chatroom.find({ participant: { user: req.user.id } }).populate("participant.user");
+            return res.status(200).json(chatrooms)
+        } catch (e) { 
+            console.log(e);
+            return res.status(400).json({
+                "message": "Error"
+            })
+        }
     }
 }
 
