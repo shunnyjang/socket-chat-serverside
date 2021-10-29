@@ -6,17 +6,15 @@ const chatroomController = {
         const user = req.user.id;
         const { name, recipient } = req.body;
 
-        const chatroomExists = await Chatroom.findOne({ name });
-        if (chatroomExists) throw "Chatroom with that name already exists!";
-
         const chatroom = new Chatroom({
             name,
             participant: [{ user: user }, { user: recipient }]
         });
 
         await chatroom.save();
-        return res.json({
-            message: "Chatroom created"
+        return res.status(201).json({
+            message: "Chatroom created",
+            chatroom_id: chatroom._id
         });
     },
     getAllMyChatrooms: async (req, res) => {
